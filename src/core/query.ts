@@ -193,7 +193,11 @@ export class Tile38Query {
     }
 
     /**
-     * conducts search with an object that's already in the database
+     * Conducts search with an object that's already in the database
+     * https://tile38.com/commands/get/ 
+     * 
+     * @param key 
+     * @param id 
      */
     withGetObject(key: Tile38Key, id: Tile38Id) {
         this.options.getObject = ["GET", key, id];
@@ -201,7 +205,13 @@ export class Tile38Query {
     }
 
     /**
-     * conducts search with bounds coordinates
+     * Conducts search with bounds coordinates
+     * https://tile38.com/topics/object-types/#bounds 
+     * 
+     * @param minlat 
+     * @param minlon 
+     * @param maxlat 
+     * @param maxlon 
      */
     withBounds(minlat: number, minlon: number, maxlat: number, maxlon: number) {
         this.options.bounds = ["BOUNDS", minlat, minlon, maxlat, maxlon];
@@ -209,35 +219,67 @@ export class Tile38Query {
     }
 
     /**
-     * conducts search with geojson object
+     * Conducts search with geojson object
+     * @param geojson 
      */
     withObject(geojson: GeoJSON.GeoJsonObject) {
         this.options.geojson = ["OBJECT", JSON.stringify(geojson)];
         return this;
     }
 
+    /**
+     * Adds a TILE to the query
+     * https://tile38.com/topics/object-types/#xyz-tile 
+     * 
+     * @param x 
+     * @param y 
+     * @param z 
+     */
     withTile(x: number, y: number, z: number) {
         this.options.tile = ["TILE", x, y, z];
         return this;
     }
 
-    withQuadKey(key: Tile38Key | Tile38Argument) {
-        this.options.quadKey = ["QUADKEY", key];
+    /**
+     * Adds a QUADKEY to the query
+     * https://tile38.com/topics/object-types/#quadkey 
+     * 
+     * @param quadkey 
+     */
+    withQuadKey(quadkey: Tile38Key | Tile38Argument) {
+        this.options.quadKey = ["QUADKEY", quadkey];
         return this;
     }
 
+    /**
+     * Adds a HASH to the query
+     * 
+     * @param geohash 
+     */
     withHash(geohash: string) {
         this.options.hash = ["HASH", geohash];
         return this;
     }
 
-    // adds CIRCLE arguments to WITHIN / INTERSECTS queries
+    /**
+     * Adds CIRCLE arguments to WITHIN / INTERSECTS queries
+     * 
+     * @param lat 
+     * @param lon 
+     * @param radius 
+     */
     withCircle(lat: number, lon: number, radius: number) {
         this.options.circle = ["CIRCLE", lat, lon, radius];
         return this;
     }
 
-    // adds POINT arguments to NEARBY query.
+    /**
+     * adds POINT arguments to NEARBY query.
+     * 
+     * @param lat 
+     * @param lon 
+     * @param meters 
+     */
     withPoint(lat: number, lon: number, meters?: number) {
         this.options.point = ["POINT", lat, lon];
         if (meters) {
@@ -246,15 +288,23 @@ export class Tile38Query {
         return this;
     }
 
-    // adds ROAM arguments to NEARBY query
+    /**
+     * Adds ROAM arguments to NEARBY query
+     * 
+     * @param key 
+     * @param pattern 
+     * @param meters 
+     */
     withRoam(key: Tile38Key, pattern: string, meters: number) {
         // TODO throw error if type != 'NEARBY'
         this.options.roam = ["ROAM", key, pattern, meters];
         return this;
     }
 
-    // return all the commands of the query chain, as a string, the way it will
+    /**
+     * Return all the commands of the query chain, as a string, the way it will
     // be sent to Tile38
+     */
     public compileCommand(): string {
         return this.type + " " + this.compileCommandArray().join(" ");
     }
@@ -263,18 +313,35 @@ export class Tile38Query {
     // Hacky typing...
     public compileCommandArray(): string[] {
         return this.commandOrder()
-            .map((optionKey) => this.options[optionKey])
+            .map((command) => this.options[command])
+            .filter(command => command)
             .reduce((prev, current) => {
                 if (current instanceof Array) {
                     (prev as string[]).push(...current);
                 }
+                return prev;
             }, [this.key]) as string[];
     }
 
+    /**
+     * The list of ordered commands. Just like the order of keywords in a SQL command. 
+     * More information: 
+     * 
+     * https://tile38.com/commands/nearby/
+     * https://tile38.com/commands/within/
+     * https://tile38.com/commands/search/
+     * https://tile38.com/commands/intersects/
+     * https://tile38.com/commands/scan/
+     * 
+     */
     public commandOrder(): (keyof Tile38QueryOptions)[] {
         return ["cursor", "limit", "sparse", "matches", "order", "distance", "where",
             "whereIn", "whereEval", "whereEvalSha", "clip", "nofields", "fence", "detect",
             "commands", "output", "getObject", "bounds", "geojson", "tile", "quadKey", "hash",
             "point", "circle", "roam"];
+    }
+
+    public toString() {
+        return this.compileCommand();
     }
 }

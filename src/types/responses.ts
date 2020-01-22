@@ -1,9 +1,11 @@
-import { Tile38Key } from "../core";
+import { Tile38Coord, Tile38DetectEvents, Tile38Id, Tile38Key } from "../core";
 
 export type BaseTile38Response = {
-    ok: boolean;
+    count?: number;
+    cursor?: number;
     elapsed: number;
     err: string | unknown;
+    ok: boolean;
 }
 
 export type Tile38Response<T> = BaseTile38Response & T;
@@ -36,3 +38,25 @@ export type Tile38Hook = {
     endpoints: string[];
     command: string[];
 };
+
+export type Tile38ObjectResult<T> = {
+    id: Tile38Id;
+    object: Tile38Coord | "string" | T;
+}
+
+export type Tile38ObjectResultSet<T> = {
+    objects: Tile38ObjectResult<T>[];
+    count: number;
+    cursor: number;
+}
+
+export type Tile38LiveObjectResult<T> = {
+    command?: string;
+    detect: Tile38DetectEvents;
+    fields?: { [key: string]: number };
+    group: string;
+    id: Tile38Id;
+    key: Tile38Key;
+    object: Tile38Coord | "string" | T;
+    time: string;
+} | "string" | undefined;

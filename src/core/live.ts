@@ -2,7 +2,10 @@ import * as net from "net";
 import Parser from "redis-parser";
 
 import { Tile38Config } from "../config";
+import { Tile38LiveObjectResult } from "../types";
 import { ITile38Logging } from "../util/logging";
+import { Tile38Query } from "./query";
+import { encodeQueryToRedisCommand } from "./util";
 
 /**
  * establishes an open socket to the Tile38 server for live geofences.
@@ -29,11 +32,14 @@ export class LiveGeofence {
      * @param redisCommmand Command string to send to Tile38
      * @param callback callback method with parameters (err, results)
      */
-    public open<T>(redisCommmand: string, callback: (result: T | string | undefined, error?: Error) => void): LiveGeofence {
+    public open<T>(query: Tile38Query, callback: (result: Tile38LiveObjectResult<T>, error?: Error) => void): LiveGeofence {
         // Get the data
         const { port, host, password, debug, logging } = this.config;
 
-        this.logging.debug(`Opening live geofence for command ${redisCommmand}`);
+        // Get the command
+        const command = encodeQueryToRedisCommand(query);
+
+        this.logging.debug(`Opening live geofence for command ${query}`);
         const socket = new net.Socket();
         this.socket = socket;
 
@@ -43,31 +49,31 @@ export class LiveGeofence {
                 // authenticate if necessary
                 socket.write(`AUTH ${password}\r\n`);
             }
-            socket.write(redisCommmand + "\r\n");
+            socket.write(command + "\r\n");
         });
 
         // On close the socket
         socket.on("close", this.onClose);
 
         const parser = new Parser({
-            returnReply: (reply: string) => {
+            returnReply: (rawReply: string) => {
                 if (debug) {
-                    logging.log(reply);
+                    logging.log(rawReply);
                 }
-                if (reply === "OK") return; // we're not invoking a callback for the 'OK' response that comes first
+                if (rawReply === "OK") return; // we're not invoking a callback for the 'OK' response that comes first
 
-                let response = reply;
-                const firstCharOfReply = reply.charAt(0);
+                let reply = rawReply;
+                const firstCharOfReply = rawReply.charAt(0);
                 if (firstCharOfReply == "{" || firstCharOfReply == "[") {
                     // this smells like json, so try to parse it
                     try {
-                        response = JSON.parse(reply);
+                        reply = JSON.parse(rawReply);
                     } catch (err) {
                         // we'll return the reply as-is.
-                        logging.warn("Unable to parse server response: " + reply);
+                        logging.warn("Unable to parse server response: " + rawReply);
                     }
                 }
-                callback(response);
+                callback(reply as Tile38LiveObjectResult<T>);
             },
             returnError: (error: Error) => {
                 logging.error(`Live socket error ${error}`);

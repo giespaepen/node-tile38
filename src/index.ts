@@ -2,18 +2,22 @@ import { Point, Polygon } from "geojson";
 
 import { Tile38Config } from "./config";
 import {
-    BaseTile38Response,
     CoreClient,
     Tile38ConfigProperties,
     Tile38ConfigProperty,
+    Tile38Fields,
     Tile38Hook,
     Tile38Pong,
     Tile38Stats,
 } from "./core";
 import { Tile38Command, Tile38Coord, Tile38GetOptions, Tile38HashType, Tile38Id, Tile38Key, Tile38SetOptions } from "./core";
 import { QueryFactory } from "./core/queryFactory";
+import { toSafeJson } from "./util/json";
 
-
+/**
+ * Tile38 Client. Instantiate a new instance. Instances are assigned a unique id and can work
+ * separate. No connection pooling.
+ */
 export class Tile38 extends CoreClient {
 
     public factory: QueryFactory;
@@ -25,7 +29,7 @@ export class Tile38 extends CoreClient {
      */
     constructor(config?: Partial<Tile38Config>) {
         super(config);
-        this.factory = new QueryFactory(this.config, this.client);
+        this.factory = new QueryFactory(this.config, this);
     }
 
     /**
@@ -40,8 +44,8 @@ export class Tile38 extends CoreClient {
     /**
      * Quit the client.
      */
-    public async quit(): Promise<BaseTile38Response> {
-        return await this.execute("QUIT");
+    public async quit(): Promise<void> {
+        await this.close();
     }
 
     /**
@@ -75,9 +79,9 @@ export class Tile38 extends CoreClient {
     }
 
     /**
-     * ets a configuration value in the database. Will return true if successful.
-    // Note that the value does not get persisted until configRewrite is called.
-
+     * Sets a configuration value in the database. Will return true if successful.
+     * Note that the value does not get persisted until configRewrite is called.
+     * 
      * @param property 
      * @param value 
      * @returns True when succeeded
@@ -196,7 +200,7 @@ export class Tile38 extends CoreClient {
      * @param options 
      * @returns True when succeedd
      */
-    public async set<T>(key: Tile38Key, id: Tile38Id, coord: Tile38Coord, fields: T | {} = {}, options: Tile38SetOptions = {}) {
+    public async set(key: Tile38Key, id: Tile38Id, coord: Tile38Coord, fields: Tile38Fields | {} = {}, options: Tile38SetOptions = {}) {
         const args: (number | string | Tile38Command | Tile38Coord)[] = [key, id];
 
         // Add the fields to the map
@@ -217,7 +221,7 @@ export class Tile38 extends CoreClient {
         // Sort out the coord object to the correct command equivalent
         if (Array.isArray(coord)) {
             if (coord.length > 1 && coord.length < 5) {
-                args.push(coord.length === 4 ? "BOUNDS" : "POINTS", ...coord);
+                args.push(coord.length === 4 ? "BOUNDS" : "POINT", ...coord);
             } else {
                 throw Error(`Incorrect number of values ${coord.length}`);
             }
@@ -232,11 +236,12 @@ export class Tile38 extends CoreClient {
         }
 
         // Return the command
-        return await this.executeForOK("SET", args);
+        return await this.executeForOK("SET", ...args);
     }
 
     /**
-     * Convenience method for set() with options.type = 'string'
+     * Set a string to the database. See:
+     * https://tile38.com/commands/set/#strings
      * 
      * @param key 
      * @param id 
@@ -244,8 +249,8 @@ export class Tile38 extends CoreClient {
      * @param fields 
      * @param options 
      */
-    public async setString<T>(key: Tile38Key, id: Tile38Id, coord: string, fields: T | {} = {}, options: Tile38SetOptions = {}) {
-        return await this.set(key, id, coord, fields, { ...options, type: "string" });
+    public async setString<T>(key: Tile38Key, id: Tile38Id, value: string) {
+        return await this.executeForOK("SET", key, id, "STRING", value);
     }
 
     /**
@@ -292,7 +297,7 @@ export class Tile38 extends CoreClient {
      *   get('fleet', 'truck1', {withfields: true} // include FIELDS
      *   get('fleet', 'truck1', {type: 'POINT'})   // same as above
      *   get('fleet', 'truck1', {type: 'BOUNDS'})  // return bounds
-     *   get('fleet', 'truck1', {type: 'HASH 6'}) // return geohash with precision 6
+     *   get('fleet', 'truck1', {type: 'HASH 6'})  // return geohash with precision 6
      * 
      * @param key 
      * @param id 
@@ -310,7 +315,11 @@ export class Tile38 extends CoreClient {
             args.push(options.type);
         }
 
-        return await this.executeForObject<T>("GET", args);
+        return await this.executeForObject<T>("GET", ...args);
+    }
+
+    public async getWithFields<T>(key: Tile38Key, id: Tile38Id, options: Tile38GetOptions = {}) {
+        return await this.get<T>(key, id, { ...options, withFields: true });
     }
 
     /**
@@ -360,15 +369,33 @@ export class Tile38 extends CoreClient {
      * 
      * @param key 
      * @param id 
-     * @param jKey 
-     * @param jVal 
+     * @param jsonKey 
+     * @param jsonValue 
      */
-    public async jset(key: Tile38Key, id: Tile38Id, jKey: string, jVal: unknown) {
-        return await this.executeForOK("JSET", [key, id, jKey, jVal]);
+    public async jset(key: Tile38Key, id: Tile38Id, jsonKey: string, jsonValue: string | number | boolean) {
+        return await this.executeForOK("JSET", ...[key, id, jsonKey, jsonValue]);
     }
 
     /**
-     * Get a value from a json document
+     * Set a full object
+     * @param key 
+     * @param id 
+     * @param value 
+     */
+    public async jsetObject(key: Tile38Key, id: Tile38Id, value: Record<string, unknown>) {
+        const json = toSafeJson(value);
+        const jsonKeys = Object.keys(json);
+        const results = [];
+        for (let i = 0; i < jsonKeys.length; i++) {
+            const result = await this.jset(key, id, jsonKeys[i], json[jsonKeys[i]]);
+            results.push(result);
+        }
+
+        return results;
+    }
+
+    /**
+     * Get a value from a JSON document
      * 
      * @param key 
      * @param id 
@@ -379,13 +406,14 @@ export class Tile38 extends CoreClient {
     }
 
     /**
-     * Delete a json value
+     * Delete a JSON value
+     * 
      * @param key 
      * @param id 
-     * @param jKey 
+     * @param jsonKey 
      */
-    public async jdel(key: Tile38Key, id: Tile38Id, jKey: string) {
-        return this.executeForOK("JDEL", key, id, jKey);
+    public async jdel(key: Tile38Key, id: Tile38Id, jsonKey: string) {
+        return this.executeForOK("JDEL", key, id, jsonKey);
     }
 
     /**

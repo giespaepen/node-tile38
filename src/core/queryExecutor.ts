@@ -1,25 +1,23 @@
-import { RedisClient } from "redis";
-
-import { Tile38Config } from "../config";
+import { Tile38Key, Tile38LiveObjectResult, Tile38ObjectResultSet, Tile38OptionType, Tile38QueryOptions } from "../types";
 import { CoreClient } from "./client";
 import { LiveGeofence } from "./live";
 import { Tile38Query } from "./query";
-import { queryToEncodedCommand } from "./util";
 
 /**
  * Wrapper class to execute queries
  */
-export class QueryExecutor extends CoreClient {
-    constructor(public query: Tile38Query, config: Tile38Config, client: RedisClient) {
-        super(config, client);
+export class QueryExecutor extends Tile38Query {
+
+    constructor(type: Tile38OptionType, key: Tile38Key, options: Tile38QueryOptions = {}, private client: CoreClient) {
+        super(type, key, options);
     }
 
     /**
      * Execute the query
      */
-    public async execute<T>(): Promise<T> {
-        return await this.executeForObject<T>(
-            this.query.type, this.query.compileCommandArray());
+    public async execute<T>() {
+        return await this.client.executeForObject<Tile38ObjectResultSet<T>>(
+            this.type, ...this.compileCommandArray());
     }
 
     /**
@@ -31,9 +29,9 @@ export class QueryExecutor extends CoreClient {
      * @param callback to process the results
      * @returns LiveGeofence
      */
-    public executeFence<T>(callback: (result: T | string | undefined) => void): LiveGeofence {
-        this.query.withFence();
-        return new LiveGeofence(this.config)
-            .open(queryToEncodedCommand(this.query), callback);
+    public executeFence<T>(callback: (result: Tile38LiveObjectResult<T>, error?: Error) => void): LiveGeofence {
+        this.withFence();
+        return new LiveGeofence(this.client.getConfig())
+            .open(this, callback);
     }
 }

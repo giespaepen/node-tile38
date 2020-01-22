@@ -47,6 +47,8 @@ export type Tile38Coord = [number, number] | [number, number, number] | [number,
 
 export type Tile38HashType = "HASH 5" | "HASH 6" | "HASH 7" | "HASH 8" | "HASH 9" | "HASH 10" | "HASH 11" | "HASH 12";
 
+export type Tile38Fields = { [field: string]: number };
+
 export type Tile38SetOptions = {
     expire?: number;
     onlyIfExists?: boolean;

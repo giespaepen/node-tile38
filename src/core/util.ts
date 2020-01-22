@@ -6,8 +6,8 @@ import { Tile38Query } from "./query";
  * 
  * @param query 
  */
-export function queryToEncodedCommand(query: Tile38Query): string {
-    return redisEncodeCommand(query.type, query.compileCommandArray());
+export function encodeQueryToRedisCommand(query: Tile38Query): string {
+    return encodeRedisCommand(query.type, query.compileCommandArray());
 }
 
 /**
@@ -17,7 +17,7 @@ export function queryToEncodedCommand(query: Tile38Query): string {
  * @param command 
  * @param args 
  */
-export function redisEncodeCommand(command: Tile38Command, args: Tile38Argument[]): string {
+export function encodeRedisCommand(command: Tile38Command, args: Tile38Argument[]): string {
     // this is a greatly simplified version of the internal_send_command() functionality in
     // https://github.com/NodeRedis/node_redis/blob/master/index.js
     let cmdStr = "*" + (args.length + 1) + "\r\n$" + command.length + "\r\n" + command + "\r\n";
