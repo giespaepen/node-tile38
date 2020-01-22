@@ -41,7 +41,7 @@ export type Tile38Command =
 
 export type Tile38Key = string;
 
-export type Tile38Id = string;
+export type Tile38Id = string | number;
 
 export type Tile38Coord = [number, number] | [number, number, number] | [number, number, number, number] | string | Point | Polygon;
 

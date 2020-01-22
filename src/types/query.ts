@@ -18,7 +18,7 @@ export type Tile38QueryOptions = {
     distance?: [Tile38OptionType & "DISTANCE"];
     fence?: [Tile38OptionType & "FENCE"] | [];
     geojson?: [Tile38OptionType & "OBJECT", string] | [];
-    getObject?: [Tile38OptionType & "GET", Tile38Id, Tile38Key] | [];
+    getObject?: [Tile38OptionType & "GET", Tile38Id, Tile38Id] | [];
     hash?: [Tile38OptionType & "HASH", string] | [];
     limit?: [Tile38OptionType & "LIMIT", number] | [];
     matches?: [Tile38OptionType & "MATCH", ...Tile38OptionArgument[]] | [];
