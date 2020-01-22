@@ -318,6 +318,22 @@ export class Tile38 extends CoreClient {
         return await this.executeForObject<T>("GET", ...args);
     }
 
+    /**
+     * Check if a given key exists. This is a synthetic action with a try catch around a basic get.
+     * 
+     * @param key 
+     * @param id 
+     */
+    public async exists(key: Tile38Key, id: Tile38Id) {
+        try {
+            await this.get(key, id);
+            return true;
+        } catch (error) {
+            this.config.logging.debug(`EXISTS Object ${id} in ${key} does not exist`);
+            return false;
+        }
+    }
+
     public async getWithFields<T>(key: Tile38Key, id: Tile38Id, options: Tile38GetOptions = {}) {
         return await this.get<T>(key, id, { ...options, withFields: true });
     }
