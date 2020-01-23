@@ -464,7 +464,7 @@ export class Tile38 extends CoreClient {
         }
 
         // Add the key
-        args.push(key);
+        args.push(command, key);
 
         // Add the query
         args.push("FENCE", ...fenceOpts);
