@@ -39,4 +39,4 @@ export type Tile38QueryOptions = {
     [key: string]: unknown | [];
 };
 
-export type Tile38DetectEvents = "inside" | "outside" | "enter" | "exit" | "cross";
+export type Tile38DetectEvents = "inside" | "outside" | "enter" | "exit" | "cross" | "roam";

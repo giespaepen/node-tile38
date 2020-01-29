@@ -50,6 +50,28 @@ export type Tile38ObjectResultSet<T> = {
     cursor: number;
 }
 
+export type Tile38HookResult = {
+    detect: Tile38DetectEvents;
+    hook: string;
+    id: Tile38Id;
+    key: Tile38Key;
+    object: Tile38Coord;
+    nearby?: {
+        id: Tile38Id;
+        key: Tile38Key;
+        meters: number;
+        object: Tile38Coord;
+    };
+    faraway?: {
+        id: Tile38Id;
+        key: Tile38Key;
+        meters: number;
+        object: Tile38Coord;
+    };
+}
+
+
+
 export type Tile38LiveObjectResult<T> = {
     command?: string;
     detect: Tile38DetectEvents;
